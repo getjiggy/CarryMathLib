@@ -1,5 +1,4 @@
 pragma solidity ^0.8.20;
-import "forge-std/Test.sol";
 // SPDX-License-Identifier: MIT
 
 library CarryMathLib {
@@ -20,8 +19,6 @@ library CarryMathLib {
 
     // Load storage struct for current msg.sender + current function selector
     function _load() private view returns (CarrySlot storage s) {
-        console.logString("signature");
-        console.logBytes4(msg.sig);
         bytes32 slot = _slotFor(msg.sender, msg.sig);
 
         assembly {
