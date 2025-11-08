@@ -6,92 +6,123 @@ import {CarryMathLib} from "../src/CarryMathLib.sol";
 import {FixedPointMathLib} from "@solady-utils/FixedPointMathLib.sol";
 
 contract CarryMathLibTest is Test {
-    // Reuse library internal state per test
-    // (CarryMathLib handles its own carry automatically)
-    uint256 internal constant DEN = 1e18; // denominator (1.0 in WAD)
-    uint256 internal constant NUM = 5e17; // 0.5 in WAD
+    uint256 constant DEN = 1e18;
+    uint256 constant NUM = 5e17;
 
-    function setUp() public {
-        // Ensure clean state before each test
-        CarryMathLib.resetCarry();
-    }
-
-    /// @notice Test simple single-call correctness.
+    /// @notice simple single-call correctness
     function testSingleMulDiv() public {
-        uint256 x = 2e18; // 2.0
-        uint256 y = 3e18; // 3.0
-        uint256 z = CarryMathLib.mulDiv(x, y, DEN);
+        uint256 x = 2e18;
+        uint256 y = 3e18;
+        uint256 z = CarryMathLib.mulDivAuto(x, y, DEN, "main", 0);
         assertEq(z, 6e18);
     }
 
-    /// @notice Ensure carry accumulates fractional remainders correctly.
+    /// @notice carry accumulates correctly for repeated fractional ops
     function testCarryAccumulation() public {
-        CarryMathLib.resetCarry();
-
-        uint256 total = 0;
+        uint256 counter;
+        string memory ns = "accum";
+        uint256 total;
         for (uint256 i = 0; i < 10; ++i) {
-            uint256 result = CarryMathLib.mulDiv(1, 1, 3);
+            uint256 result = CarryMathLib.mulDivAuto(1, 1, 3, ns, counter);
             total += result;
         }
 
-        // 10 / 3 = 3 * 3 + 1 remainder -> total should be 3
+        // 10 / 3 = 3 * 3 + 1 remainder
         assertEq(total, 3);
-        // remainder must be 1 (carry left over)
-        uint256 carry = CarryMathLib.peekCarry();
+        uint256 carry = CarryMathLib.getCarry(keccak256(bytes(ns)), counter);
         assertEq(carry, 1);
     }
 
-    /// @notice Check conservation under many small operations.
-    // function testMassConservationManyOps() public {
-    //     CarryMathLib.resetCarry();
+    /// @notice ensure resetting a carry zeroes the storage
+    function testResetCarry() public {
+        uint256 counter;
+        string memory ns = "reset";
+        CarryMathLib.mulDivAuto(5, 1, 3, ns, 0);
+        uint256 carryBefore = CarryMathLib.getCarry(keccak256(bytes(ns)), counter);
+        assertGt(carryBefore, 0);
 
-    //     uint256 expected = 0;
-    //     uint256 computed = 0;
-    //     uint256 denominator = 7;
+        CarryMathLib.resetCarry(keccak256(bytes(ns)), counter);
+        uint256 carryAfter = CarryMathLib.getCarry(keccak256(bytes(ns)), counter);
+        assertEq(carryAfter, 0);
+    }
 
-    //     // perform 1000 random small ops
-    //     for (uint256 i = 1; i <= 1000; ++i) {
-    //         expected += i;
-    //         computed += CarryMathLib.mulDiv(i, 1, denominator);
-    //     }
-
-    //     uint256 carry = CarryMathLib.peekCarry();
-    //     // invariant: computed * denominator + carry == expected
-    //     assertEq(computed * denominator + carry, expected);
-    // }
-
-    /// @notice Fuzz: check conservation holds for random values.
+    /// @notice fuzz: reconstructed value == x*y within denominator tolerance
     function testFuzzMassConservation(uint256 x, uint256 y, uint256 d) public {
         vm.assume(d > 1 && d < type(uint128).max);
-        vm.assume(x < 1e36 && y < 1e36); // prevent overflow
+        vm.assume(x < 1e36 && y < 1e36);
 
-        CarryMathLib.resetCarry();
-        uint256 z = CarryMathLib.mulDiv(x, y, d);
+        string memory ns = "fuzz";
+        uint256 z = CarryMathLib.mulDivAuto(x, y, d, ns, 0);
+        uint256 carry = CarryMathLib.getCarry(keccak256(bytes(ns)), 0);
 
-        uint256 carry = CarryMathLib.peekCarry();
+        // z * d + carry == x*y approximately
         uint256 reconstructed = z * d + carry;
-        uint256 exact = FixedPointMathLib.mulDiv(x, y, 1); // same mult, no div yet
+        uint256 exact = FixedPointMathLib.mulDiv(x, y, 1);
         assertApproxEqAbs(reconstructed, exact, d - 1);
     }
 
-    /// @notice Ensure carries are isolated by selector.
-    function testCarryIsolationBetweenFunctions() public {
-        CarryMathLib.resetCarry();
-        uint256 first = CarryMathLib.mulDiv(1, 1, 3);
-        assertEq(first, 0);
-        uint256 carry1 = CarryMathLib.peekCarry();
-        assertEq(carry1, 1);
-        console.logString("begin dummy call");
-        // Simulate different selector by calling a dummy helper twice
-        this.dummyCall(1, 1, 3);
-        uint256 carry2 = this.dummyCall(1, 1, 3);
-
-        // carry1 != carry2 — each function has its own carry space
-        assertTrue(carry1 != carry2);
+    /// @notice ensure carries are isolated between namespaces
+    function testNamespaceIsolation() public {
+        uint256 a = CarryMathLib.mulDivAuto(1, 1, 3, "A", 0);
+        uint256 b = CarryMathLib.mulDivAuto(1, 1, 3, "B", 0);
+        assertEq(a, b); // same arithmetic
+        uint256 carryA = CarryMathLib.getCarry(keccak256("A"), 0);
+        uint256 carryB = CarryMathLib.getCarry(keccak256("B"), 0);
+        assertTrue(carryA != 0 && carryB != 0);
+        assertTrue(carryA == carryB); // same remainder logic
+        // but ensure isolation by writing again and checking separation
+        CarryMathLib.resetCarry(keccak256("A"), 0);
+        uint256 carryAAfter = CarryMathLib.getCarry(keccak256("A"), 0);
+        uint256 carryBAfter = CarryMathLib.getCarry(keccak256("B"), 0);
+        assertEq(carryAAfter, 0);
+        assertEq(carryBAfter, carryB);
     }
 
-    function dummyCall(uint256 x, uint256 y, uint256 d) external returns (uint256) {
-        CarryMathLib.mulDiv(x, y, d);
-        return CarryMathLib.peekCarry();
+    /// @notice ensure carries are isolated by counter within same namespace
+    function testCounterIsolation() public {
+        string memory ns = "counter";
+        CarryMathLib.mulDivAuto(1, 1, 3, ns, 0);
+        CarryMathLib.mulDivAuto(2, 1, 3, ns, 1);
+
+        uint256 c0 = CarryMathLib.getCarry(keccak256(bytes(ns)), 0);
+        uint256 c1 = CarryMathLib.getCarry(keccak256(bytes(ns)), 1);
+        assertTrue(c0 != c1);
+    }
+
+    /// @notice ensure carries are isolated by selector (msg.sig)
+    function testSelectorIsolation() public {
+        string memory ns = "selector";
+        // carry should be 1
+        CarryMathLib.mulDivAuto(1, 1, 3, ns, 0);
+        uint256 carry1 = CarryMathLib.getCarry(keccak256(bytes(ns)), 0);
+        assertTrue(carry1 == 1, "carry1 check");
+
+        // external call triggers a new msg.sig.
+        // carry should be 2
+        uint256 carry2 = this.dummyCall(1, 2, 3, ns, 0);
+        console.logUint(carry2);
+        assertTrue(carry2 == 2, "carry2 check");
+        // ensure carry1 has not changed
+        uint256 carry1After = CarryMathLib.getCarry(keccak256(bytes(ns)), 0);
+        assertEq(carry1, carry1After);
+    }
+
+    function dummyCall(uint256 x, uint256 y, uint256 d, string memory ns, uint256 counter) external returns (uint256) {
+        CarryMathLib.mulDivAuto(x, y, d, ns, counter);
+        return CarryMathLib.getCarry(keccak256(bytes(ns)), counter);
+    }
+
+    /// @notice deterministic reproducibility under identical inputs
+    function testDeterministicResults() public {
+        string memory ns = "determinism";
+        uint256 r1 = CarryMathLib.mulDivAuto(7, 5, 3, ns, 0);
+        uint256 c1 = CarryMathLib.getCarry(keccak256(bytes(ns)), 0);
+
+        CarryMathLib.resetCarry(keccak256(bytes(ns)), 0);
+        uint256 r2 = CarryMathLib.mulDivAuto(7, 5, 3, ns, 0);
+        uint256 c2 = CarryMathLib.getCarry(keccak256(bytes(ns)), 0);
+
+        assertEq(r1, r2);
+        assertEq(c1, c2);
     }
 }
