@@ -1,50 +1,69 @@
-pragma solidity ^0.8.20;
 // SPDX-License-Identifier: MIT
+pragma solidity ^0.8.20;
 
+/// @title CarryMathLib
+/// @notice Deterministic hierarchical carry tracking for arithmetic operations.
+/// @dev Each carry is stored directly in the caller's storage, isolated by
+///      (account, function selector, namespace, counter).
 library CarryMathLib {
-    uint256 internal constant ONE = 1e18;
+    bytes32 private constant _CARRY_NAMESPACE = keccak256("CarryMathLib.StorageRoot");
 
-    // --- Internal storage namespace ---
-    // keccak256("carry.math.slot") -> isolate from collisions
-    bytes32 internal constant _CARRY_NAMESPACE = keccak256("carry.math.slot");
-
-    struct CarrySlot {
+    struct Carry {
         uint256 remainder;
     }
 
-    // Compute a deterministic storage slot for each (caller, selector)
-    function _slotFor(address account, bytes4 selector) private pure returns (bytes32 slot) {
+    /// @dev Derive root for (account, selector)
+    function _rootFor(address account, bytes4 selector) private pure returns (bytes32) {
         return keccak256(abi.encodePacked(_CARRY_NAMESPACE, account, selector));
     }
 
-    // Load storage struct for current msg.sender + current function selector
-    function _load() private view returns (CarrySlot storage s) {
-        bytes32 slot = _slotFor(msg.sender, msg.sig);
+    /// @dev Derive deterministic slot for (account, selector, name, counter)
+    function _slotFor(address account, bytes4 selector, bytes32 name, uint256 counter) private pure returns (bytes32) {
+        bytes32 root = _rootFor(account, selector);
+        return keccak256(abi.encodePacked(root, name, counter));
+    }
 
+    /// @notice Multiply/divide with persistent carry, stored directly in caller's storage.
+    function mulDiv(uint256 x, uint256 y, uint256 d, bytes32 name, uint256 counter) internal returns (uint256 z) {
+        bytes32 slot = _slotFor(msg.sender, msg.sig, name, counter);
+        uint256 carryIn;
+
+        // read remainder from caller’s storage
         assembly {
-            s.slot := slot
+            carryIn := sload(slot)
+        }
+
+        uint256 sum = x * y + carryIn;
+        z = sum / d;
+        uint256 newRemainder = sum % d;
+
+        // write new remainder to caller’s storage
+        assembly {
+            sstore(slot, newRemainder)
         }
     }
 
-    /// @notice Multiply/divide with automatic carry tracking based on (caller, selector)
-    function mulDiv(uint256 x, uint256 y, uint256 d) internal returns (uint256 z) {
-        CarrySlot storage s = _load();
-
-        uint256 mult = x * y;
-        uint256 sum = mult + s.remainder;
-        z = sum / d;
-        s.remainder = sum % d;
+    /// @notice Read the carry remainder for a given namespace/counter.
+    function getCarry(bytes32 name, uint256 counter) internal view returns (uint256 remainder) {
+        bytes32 slot = _slotFor(msg.sender, msg.sig, name, counter);
+        assembly {
+            remainder := sload(slot)
+        }
     }
 
-    /// @notice Peek current carry for this function (optional)
-    function peekCarry() internal view returns (uint256) {
-        CarrySlot storage s = _load();
-        return s.remainder;
+    /// @notice Reset (zero) the carry for a given namespace/counter.
+    function resetCarry(bytes32 name, uint256 counter) internal {
+        bytes32 slot = _slotFor(msg.sender, msg.sig, name, counter);
+        assembly {
+            sstore(slot, 0)
+        }
     }
 
-    /// @notice Reset carry (e.g., during state resets or audits)
-    function resetCarry() internal {
-        CarrySlot storage s = _load();
-        s.remainder = 0;
+    /// @notice Convenience wrapper with a string namespace.
+    function mulDivAuto(uint256 x, uint256 y, uint256 d, string memory name, uint256 counter)
+        internal
+        returns (uint256)
+    {
+        return mulDiv(x, y, d, keccak256(bytes(name)), counter);
     }
 }
