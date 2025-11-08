@@ -1,4 +1,5 @@
 pragma solidity ^0.8.20;
+import "forge-std/Test.sol";
 // SPDX-License-Identifier: MIT
 
 library CarryMathLib {
@@ -13,27 +14,23 @@ library CarryMathLib {
     }
 
     // Compute a deterministic storage slot for each (caller, selector)
-    function _slotFor(
-        address account,
-        bytes4 selector
-    ) private pure returns (bytes32 slot) {
+    function _slotFor(address account, bytes4 selector) private pure returns (bytes32 slot) {
         return keccak256(abi.encodePacked(_CARRY_NAMESPACE, account, selector));
     }
 
     // Load storage struct for current msg.sender + current function selector
     function _load() private view returns (CarrySlot storage s) {
+        console.logString("signature");
+        console.logBytes4(msg.sig);
         bytes32 slot = _slotFor(msg.sender, msg.sig);
+
         assembly {
             s.slot := slot
         }
     }
 
     /// @notice Multiply/divide with automatic carry tracking based on (caller, selector)
-    function mulDiv(
-        uint256 x,
-        uint256 y,
-        uint256 d
-    ) internal returns (uint256 z) {
+    function mulDiv(uint256 x, uint256 y, uint256 d) internal returns (uint256 z) {
         CarrySlot storage s = _load();
 
         uint256 mult = x * y;
