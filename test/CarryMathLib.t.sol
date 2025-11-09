@@ -8,6 +8,7 @@ import {FixedPointMathLib} from "@solady-utils/FixedPointMathLib.sol";
 contract CarryMathLibTest is Test {
     uint256 constant DEN = 1e18;
     uint256 constant NUM = 5e17;
+    
 
     /// @notice simple single-call correctness
     function testSingleMulDiv() public {
@@ -105,6 +106,13 @@ contract CarryMathLibTest is Test {
         // ensure carry1 has not changed
         uint256 carry1After = CarryMathLib.getCarry(keccak256(bytes(ns)), 0);
         assertEq(carry1, carry1After);
+
+        // call again to dummyCall for gas reporting
+        uint256 carry3 = this.dummyCall(3, 1, 3, ns, 0);
+        uint256 carry4 = this.dummyCall(3, 1, 3, ns, 0);
+        assertTrue(carry3 == 0, "carry3 check");
+        assertTrue(carry4 == 1, "carry4 check");
+
     }
 
     function dummyCall(uint256 x, uint256 y, uint256 d, string memory ns, uint256 counter) external returns (uint256) {
@@ -124,5 +132,49 @@ contract CarryMathLibTest is Test {
 
         assertEq(r1, r2);
         assertEq(c1, c2);
+    }
+
+    function testCarryMem() public pure {
+        CarryMathLib.Carry memory carry = CarryMathLib.initCarryMem();
+        uint256 x = 7;
+        uint256 y = 5;
+        uint256 d = 3;
+
+        (uint256 z1, uint256 rem1) = CarryMathLib.mulDivMem(x, y, d, carry);
+        carry.remainder = rem1;
+        // 7 * 5 = 35 / 3 = 11 remainder 2
+        // remainder must be 2
+        assertEq(rem1, 2, "rem1 check");
+        (uint256 z2, uint256 rem2) = CarryMathLib.mulDivMem(x, y, d, carry);
+        carry.remainder = rem2;
+        // 7 * 5 = 35 + 2 = 37 / 3 = 12 remainder 1
+        // remainder must be 1
+        assertEq(rem2, 1, "rem2 check"); 
+        (uint256 z3, uint256 rem3) = CarryMathLib.mulDivMem(x, y, d, carry);
+        // 7 * 5 = 35 + 1 = 36 / 3 = 12 remainder 0
+        // remainder must be 0
+        assertEq(rem3, 0, "rem3 check");
+
+        uint256 totalZ = z1 + z2 + z3;
+        uint256 totalReconstructed = totalZ * d + rem3;
+        uint256 exact = FixedPointMathLib.mulDiv(x, y, 1) * 3;
+
+        assertApproxEqAbs(totalReconstructed, exact, d - 1);
+    }
+
+    function dummyCallMem(uint x, uint y, uint d, CarryMathLib.Carry memory carry) external pure returns (uint z, CarryMathLib.Carry memory) {
+        (z, carry.remainder) = CarryMathLib.mulDivMem(x, y, d, carry);
+
+        return (z, carry);
+    }
+    function testCarryMemForGas() public view { 
+        CarryMathLib.Carry memory carry = CarryMathLib.initCarryMem();
+        uint256 x = 7;
+        uint256 y = 5;
+        uint256 d = 3;
+
+        (, CarryMathLib.Carry memory carryOut) = this.dummyCallMem(x, y, d, carry);
+        assertEq(carryOut.remainder, 2, "rem1 check");
+        
     }
 }
