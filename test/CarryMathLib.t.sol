@@ -8,7 +8,6 @@ import {FixedPointMathLib} from "@solady-utils/FixedPointMathLib.sol";
 contract CarryMathLibTest is Test {
     uint256 constant DEN = 1e18;
     uint256 constant NUM = 5e17;
-    
 
     /// @notice simple single-call correctness
     function testSingleMulDiv() public {
@@ -112,7 +111,6 @@ contract CarryMathLibTest is Test {
         uint256 carry4 = this.dummyCall(3, 1, 3, ns, 0);
         assertTrue(carry3 == 0, "carry3 check");
         assertTrue(carry4 == 1, "carry4 check");
-
     }
 
     function dummyCall(uint256 x, uint256 y, uint256 d, string memory ns, uint256 counter) external returns (uint256) {
@@ -149,7 +147,7 @@ contract CarryMathLibTest is Test {
         carry.remainder = rem2;
         // 7 * 5 = 35 + 2 = 37 / 3 = 12 remainder 1
         // remainder must be 1
-        assertEq(rem2, 1, "rem2 check"); 
+        assertEq(rem2, 1, "rem2 check");
         (uint256 z3, uint256 rem3) = CarryMathLib.mulDivMem(x, y, d, carry);
         // 7 * 5 = 35 + 1 = 36 / 3 = 12 remainder 0
         // remainder must be 0
@@ -162,12 +160,17 @@ contract CarryMathLibTest is Test {
         assertApproxEqAbs(totalReconstructed, exact, d - 1);
     }
 
-    function dummyCallMem(uint x, uint y, uint d, CarryMathLib.Carry memory carry) external pure returns (uint z, CarryMathLib.Carry memory) {
+    function dummyCallMem(uint256 x, uint256 y, uint256 d, CarryMathLib.Carry memory carry)
+        external
+        pure
+        returns (uint256 z, CarryMathLib.Carry memory)
+    {
         (z, carry.remainder) = CarryMathLib.mulDivMem(x, y, d, carry);
 
         return (z, carry);
     }
-    function testCarryMemForGas() public view { 
+
+    function testCarryMemForGas() public view {
         CarryMathLib.Carry memory carry = CarryMathLib.initCarryMem();
         uint256 x = 7;
         uint256 y = 5;
@@ -175,6 +178,5 @@ contract CarryMathLibTest is Test {
 
         (, CarryMathLib.Carry memory carryOut) = this.dummyCallMem(x, y, d, carry);
         assertEq(carryOut.remainder, 2, "rem1 check");
-        
     }
 }

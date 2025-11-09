@@ -1,13 +1,11 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.20;
 
-
 /// @title CarryMathLib
 /// @notice Deterministic hierarchical carry tracking for arithmetic operations.
 /// @dev Each carry is stored directly in the caller's storage, isolated by
 ///      (account, function selector, namespace, counter).
 library CarryMathLib {
-
     bytes32 private constant _CARRY_NAMESPACE = keccak256("CarryMathLib.StorageRoot");
 
     struct Carry {
@@ -30,7 +28,7 @@ library CarryMathLib {
         bytes32 slot = _slotFor(msg.sender, msg.sig, name, counter);
         uint256 carryIn;
         uint256 newRemainder;
-        
+
         // adapted from FixedPointMathLib.mulDiv
         /// @solidity memory-safe-assembly
         assembly {
@@ -80,9 +78,8 @@ library CarryMathLib {
         pure
         returns (uint256 z, uint256 newRemainder)
     {
-        uint carryIn = carry.remainder;
+        uint256 carryIn = carry.remainder;
         assembly {
-            
             if gt(x, div(not(0), y)) {
                 if y {
                     mstore(0x00, 0xbac65e5b) // `MulWadFailed()`.
@@ -94,8 +91,9 @@ library CarryMathLib {
             newRemainder := mod(total, d)
         }
     }
-        /// @notice Helper to seed/reset carry (e.g., on pool initialization).
+
+    /// @notice Helper to seed/reset carry (e.g., on pool initialization).
     function initCarryMem() internal pure returns (Carry memory) {
-        return Carry({ remainder: 0 });
+        return Carry({remainder: 0});
     }
 }
