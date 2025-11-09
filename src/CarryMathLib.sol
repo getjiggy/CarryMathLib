@@ -1,11 +1,13 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.20;
 
+
 /// @title CarryMathLib
 /// @notice Deterministic hierarchical carry tracking for arithmetic operations.
 /// @dev Each carry is stored directly in the caller's storage, isolated by
 ///      (account, function selector, namespace, counter).
 library CarryMathLib {
+
     bytes32 private constant _CARRY_NAMESPACE = keccak256("CarryMathLib.StorageRoot");
 
     struct Carry {
@@ -27,18 +29,24 @@ library CarryMathLib {
     function mulDiv(uint256 x, uint256 y, uint256 d, bytes32 name, uint256 counter) internal returns (uint256 z) {
         bytes32 slot = _slotFor(msg.sender, msg.sig, name, counter);
         uint256 carryIn;
-
-        // read remainder from caller’s storage
+        uint256 newRemainder;
+        
+        // adapted from FixedPointMathLib.mulDiv
+        /// @solidity memory-safe-assembly
         assembly {
+            // read remainder from caller’s storage
             carryIn := sload(slot)
-        }
+            if gt(x, div(not(0), y)) {
+                if y {
+                    mstore(0x00, 0xbac65e5b) // `MulWadFailed()`.
+                    revert(0x1c, 0x04)
+                }
+            }
+            let total := add(mul(x, y), carryIn)
+            z := div(total, d)
+            newRemainder := mod(total, d)
 
-        uint256 sum = x * y + carryIn;
-        z = sum / d;
-        uint256 newRemainder = sum % d;
-
-        // write new remainder to caller’s storage
-        assembly {
+            // write new remainder to caller’s storage
             sstore(slot, newRemainder)
         }
     }
@@ -65,5 +73,29 @@ library CarryMathLib {
         returns (uint256)
     {
         return mulDiv(x, y, d, keccak256(bytes(name)), counter);
+    }
+
+    function mulDivMem(uint256 x, uint256 y, uint256 d, Carry memory carry)
+        internal
+        pure
+        returns (uint256 z, uint256 newRemainder)
+    {
+        uint carryIn = carry.remainder;
+        assembly {
+            
+            if gt(x, div(not(0), y)) {
+                if y {
+                    mstore(0x00, 0xbac65e5b) // `MulWadFailed()`.
+                    revert(0x1c, 0x04)
+                }
+            }
+            let total := add(mul(x, y), carryIn)
+            z := div(total, d)
+            newRemainder := mod(total, d)
+        }
+    }
+        /// @notice Helper to seed/reset carry (e.g., on pool initialization).
+    function initCarryMem() internal pure returns (Carry memory) {
+        return Carry({ remainder: 0 });
     }
 }
