@@ -12,7 +12,13 @@ This library attempts to provide easy to use isolation for important math operat
 
 ## Notes
 
-This Repo is experimental, unaudited and was hacked together in a few hours. Each mulDivAuto operation costs about 50,000 gas which is obviously only even feasible for a layer2. sadly the vast majority of defi is on layer 1. ill probably add a less clunky in memory version for completeness but this was overall a fun experiment and wont be further maintained. 
+This Repo is experimental, unaudited and was hacked together in a few hours. The first operation on a given slot can be expected to cost ~50000 gas. Subsequent operations can be expected to range as low as ~30000 gas, depending on the state of the storage slot and value being stored. Overall Pretty expensive for l1, but i think probably feasible for L2. 
+
+Maybe I could squeeze a little more out of these numbers by doing a full yul implmentation (yikes!). The gain though will likely not be significant enough to warrant the additional complexity (except of course because im a masochist and ill do it anyway)
+
+each call to mulDivMem is significantly cheaper, costing around 2000 gas. Of course this puts the burden of storing the carry on the developer and offers little benefit (imo) over simply rounding in favor of the protocol. The vast majority of exploits which a library such as this could address enter/exit functions on a contract repeatedly, which simply tracking the remainder in memory through the life of a function call cannot address, and thus tracking the remainder as part of state becomes almost a requirement to gain any benefit. 
+
+
 
 ## Usage
 
