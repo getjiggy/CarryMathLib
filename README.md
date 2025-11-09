@@ -1,4 +1,4 @@
-## CarryMathLib
+Kim## CarryMathLib
 
 This is an unaudited exploratory library seeking ways to reduce protocol exploits due to rounding errors. DO NOT USE THIS IN PRODUCTION.
 
@@ -12,7 +12,7 @@ This library attempts to provide easy to use isolation for important math operat
 
 ## Notes
 
-This Repo is experimental, unaudited and was hacked together in a few hours.
+This Repo is experimental, unaudited and was hacked together in a few hours. Each mulDivAuto operation costs about 50,000 gas which is obviously only even feasible for a layer2. sadly the vast majority of defi is on layer 1. ill probably add a less clunky in memory version for completeness but this was overall a fun experiment and wont be further maintained. 
 
 ## Usage
 
