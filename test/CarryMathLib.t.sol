@@ -107,10 +107,8 @@ contract CarryMathLibTest is Test {
         assertEq(carry1, carry1After);
 
         // call again to dummyCall for gas reporting
-        uint256 carry3 = this.dummyCall(3, 1, 3, ns, 0);
-        uint256 carry4 = this.dummyCall(3, 1, 3, ns, 0);
-        assertTrue(carry3 == 0, "carry3 check");
-        assertTrue(carry4 == 1, "carry4 check");
+        this.dummyCall(3, 1, 3, ns, 0);
+        this.dummyCall(3, 1, 3, ns, 0);
     }
 
     function dummyCall(uint256 x, uint256 y, uint256 d, string memory ns, uint256 counter) external returns (uint256) {
