@@ -8,17 +8,15 @@ Inspired by the recent Bunni.xyz and Balancer hacks, I had a thought. Solidity r
 
 ## Isolation
 
-This library attempts to provide easy to use isolation for important math operations. automatic isolation occurs on every (msg.sender, msg.sig) combination. Each external contract calling the library will automatically have one space for each of its own external functions. Additional isolation is achieved through namespace and counters. For a given namespace 'ns', you can further isolate operations with a counter. this is useful if you perform multiple important operations within the same external function, ie calculating interest and rewards in the same external function call. it is recommended to use memory counters, otherwise you must remember to reset the storage counter at the end of execution or otherwise ensure counters are properly tracked per operation. 
+This library attempts to provide easy to use isolation for important math operations. automatic isolation occurs on address(this), a namespace, and a counter. For a given namespace 'ns', you can further isolate operations with a counter. this is useful for performing multiple important operations. it is important to isolate each use of carry tracking to a single unique slot that is never reused. IE: do not use the same namespace and counter in two seperate operations. The ns is used for organizing slots by category such as calculating interest and rewards. The counter is used to isolate calculations within the name space, ie ("fees", 0) and (fees, 1).
 
 ## Notes
 
-This Repo is experimental, unaudited and was hacked together in a few hours. The first operation on a given slot can be expected to cost ~50000 gas. Subsequent operations can be expected to range as low as ~30000 gas, depending on the state of the storage slot and value being stored. Overall Pretty expensive for l1, but i think probably feasible for L2. 
+This Repo is experimental, unaudited and was hacked together in a few hours. The first operation on a given slot can be expected to cost ~50000 gas. Subsequent operations can be expected to range as low as ~30000 gas, depending on the state of the storage slot and value being stored. Overall Pretty expensive for l1, but i think probably feasible for L2.
 
-Maybe I could squeeze a little more out of these numbers by doing a full yul implmentation (yikes!). The gain though will likely not be significant enough to warrant the additional complexity (except of course because im a masochist and ill do it anyway)
+Maybe I could squeeze a little more out of these numbers by doing a full yul implmentation (yikes!). The gain though will likely not be significant enough to warrant the additional complexity.
 
-each call to mulDivMem is significantly cheaper, costing around 2000 gas. Of course this puts the burden of storing the carry on the developer and offers little benefit (imo) over simply rounding in favor of the protocol. The vast majority of exploits which a library such as this could address enter/exit functions on a contract repeatedly, which simply tracking the remainder in memory through the life of a function call cannot address, and thus tracking the remainder as part of state becomes almost a requirement to gain any benefit. 
-
-
+each call to mulDivMem is significantly cheaper, costing around 2000 gas. Of course this puts the burden of storing the carry on the developer and offers little benefit (imo) over simply rounding in favor of the protocol. The vast majority of exploits which a library such as this could address enter/exit functions on a contract repeatedly, which simply tracking the remainder in memory through the life of a function call cannot address, and thus tracking the remainder as part of state becomes almost a requirement to gain any benefit.
 
 ## Usage
 
