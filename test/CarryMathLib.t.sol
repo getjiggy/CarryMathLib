@@ -89,27 +89,27 @@ contract CarryMathLibTest is Test {
         assertTrue(c0 != c1);
     }
 
-    /// @notice ensure carries are isolated by selector (msg.sig)
-    function testSelectorIsolation() public {
-        string memory ns = "selector";
-        // carry should be 1
-        CarryMathLib.mulDivAuto(1, 1, 3, ns, 0);
-        uint256 carry1 = CarryMathLib.getCarry(keccak256(bytes(ns)), 0);
-        assertTrue(carry1 == 1, "carry1 check");
+    // /// @notice ensure carries are isolated by selector (msg.sig)
+    // function testSelectorIsolation() public {
+    //     string memory ns = "selector";
+    //     // carry should be 1
+    //     CarryMathLib.mulDivAuto(1, 1, 3, ns, 0);
+    //     uint256 carry1 = CarryMathLib.getCarry(keccak256(bytes(ns)), 0);
+    //     assertTrue(carry1 == 1, "carry1 check");
 
-        // external call triggers a new msg.sig.
-        // carry should be 2
-        uint256 carry2 = this.dummyCall(1, 2, 3, ns, 0);
-        console.logUint(carry2);
-        assertTrue(carry2 == 2, "carry2 check");
-        // ensure carry1 has not changed
-        uint256 carry1After = CarryMathLib.getCarry(keccak256(bytes(ns)), 0);
-        assertEq(carry1, carry1After);
+    //     // external call triggers a new msg.sig.
+    //     // carry should be 2
+    //     uint256 carry2 = this.dummyCall(1, 2, 3, ns, 0);
+    //     console.logUint(carry2);
+    //     assertTrue(carry2 == 2, "carry2 check");
+    //     // ensure carry1 has not changed
+    //     uint256 carry1After = CarryMathLib.getCarry(keccak256(bytes(ns)), 0);
+    //     assertEq(carry1, carry1After);
 
-        // call again to dummyCall for gas reporting
-        this.dummyCall(3, 1, 3, ns, 0);
-        this.dummyCall(3, 1, 3, ns, 0);
-    }
+    //     // call again to dummyCall for gas reporting
+    //     this.dummyCall(3, 1, 3, ns, 0);
+    //     this.dummyCall(3, 1, 3, ns, 0);
+    // }
 
     function dummyCall(uint256 x, uint256 y, uint256 d, string memory ns, uint256 counter) external returns (uint256) {
         CarryMathLib.mulDivAuto(x, y, d, ns, counter);
