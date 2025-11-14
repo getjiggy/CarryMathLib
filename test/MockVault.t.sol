@@ -13,7 +13,7 @@ contract MockVaultTest is Test {
     }
 
     function testDoMath() public {
-        uint256 result = vault.doMath(2e18, 3e18, 1e18, "test", 0);
+        uint256 result = vault.doMath(2e18, 3e18, 1e18, keccak256(bytes("test")), 0);
         assertEq(result, 6e18);
     }
 
