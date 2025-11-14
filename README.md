@@ -10,6 +10,18 @@ Inspired by the recent Bunni.xyz and Balancer hacks, I had a thought. Solidity r
 
 This library attempts to provide easy to use isolation for important math operations. automatic isolation occurs on address(this), a namespace, and a counter. For a given namespace 'ns', you can further isolate operations with a counter. this is useful for performing multiple important operations. it is important to isolate each use of carry tracking to a single unique slot that is never reused. IE: do not use the same namespace and counter in two seperate operations. The ns is used for organizing slots by category such as calculating interest and rewards. The counter is used to isolate calculations within the name space, ie ("fees", 0) and (fees, 1).
 
+For easy devex, you can isolate by msg.sig + name space. this makes tracking counters easier. 
+
+````solidity
+    function foo() external returns (uint256 result, uint256 result2) {
+        bytes32 ns = keccak256(abi.encode("bar", msg.sig));
+
+        uint256 result = CarryMathLib.mulDiv(1, 1, 3, ns, 0);
+        uint256 result2 = CarryMathLib.mulDiv(1, 1, 3, ns, 1);
+    }
+    ```
+
+
 ## Notes
 
 This Repo is experimental, unaudited and was hacked together in a few hours. The first operation on a given slot can be expected to cost ~50000 gas. Subsequent operations can be expected to range as low as ~30000 gas, depending on the state of the storage slot and value being stored. Overall Pretty expensive for l1, but i think probably feasible for L2.
@@ -38,4 +50,4 @@ contract NeedsAccurateMath {
         interestResultOne = CarryMathLib.mulDivAuto(1, 1, 3, interestNameSpace, 0);
     }
 }
-```
+````
