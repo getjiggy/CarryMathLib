@@ -13,19 +13,19 @@ library CarryMathLib {
     }
 
     /// @dev Derive root for (account, selector)
-    function _rootFor(address account, bytes4 selector) private pure returns (bytes32) {
-        return keccak256(abi.encodePacked(_CARRY_NAMESPACE, account, selector));
+    function _rootFor(address account) private pure returns (bytes32) {
+        return keccak256(abi.encodePacked(_CARRY_NAMESPACE, account));
     }
 
-    /// @dev Derive deterministic slot for (account, selector, name, counter)
-    function _slotFor(address account, bytes4 selector, bytes32 name, uint256 counter) private pure returns (bytes32) {
-        bytes32 root = _rootFor(account, selector);
+    /// @dev Derive deterministic slot for (account, name, counter)
+    function _slotFor(address account, bytes32 name, uint256 counter) private pure returns (bytes32) {
+        bytes32 root = _rootFor(account);
         return keccak256(abi.encodePacked(root, name, counter));
     }
 
     /// @notice Multiply/divide with persistent carry, stored directly in caller's storage.
     function mulDiv(uint256 x, uint256 y, uint256 d, bytes32 name, uint256 counter) internal returns (uint256 z) {
-        bytes32 slot = _slotFor(msg.sender, msg.sig, name, counter);
+        bytes32 slot = _slotFor(address(this), name, counter);
         uint256 carryIn;
         uint256 newRemainder;
 
@@ -51,7 +51,7 @@ library CarryMathLib {
 
     /// @notice Read the carry remainder for a given namespace/counter.
     function getCarry(bytes32 name, uint256 counter) internal view returns (uint256 remainder) {
-        bytes32 slot = _slotFor(msg.sender, msg.sig, name, counter);
+        bytes32 slot = _slotFor(address(this), name, counter);
         assembly {
             remainder := sload(slot)
         }
@@ -59,7 +59,7 @@ library CarryMathLib {
 
     /// @notice Reset (zero) the carry for a given namespace/counter.
     function resetCarry(bytes32 name, uint256 counter) internal {
-        bytes32 slot = _slotFor(msg.sender, msg.sig, name, counter);
+        bytes32 slot = _slotFor(address(this), name, counter);
         assembly {
             sstore(slot, 0)
         }
