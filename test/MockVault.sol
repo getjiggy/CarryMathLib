@@ -17,7 +17,11 @@ contract MockVault {
         CarryMathLib.resetCarry(name, counter);
     }
 
-    function doMathMemory(uint256 x, uint256 y, uint256 d, CarryMathLib.Carry memory carry)  external pure returns (uint256, uint256) {
+    function doMathMemory(uint256 x, uint256 y, uint256 d, CarryMathLib.Carry memory carry)
+        external
+        pure
+        returns (uint256, uint256)
+    {
         return CarryMathLib.mulDivMem(x, y, d, carry);
     }
 

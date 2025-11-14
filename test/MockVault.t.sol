@@ -1,6 +1,5 @@
 pragma solidity ^0.8.20;
 
-
 /// @title CarryMathLib
 import {MockVault} from "./MockVault.sol";
 import "forge-std/Test.sol";
