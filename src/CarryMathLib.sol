@@ -23,7 +23,6 @@ library CarryMathLib {
         return keccak256(abi.encodePacked(root, name, counter));
     }
 
-
     /// @notice Multiply/divide with persistent carry, stored directly in caller's storage.
     function mulDiv(uint256 x, uint256 y, uint256 d, bytes32 name, uint256 counter) internal returns (uint256 z) {
         bytes32 slot = _slotFor(address(this), name, counter);
