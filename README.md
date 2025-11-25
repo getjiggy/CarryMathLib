@@ -1,4 +1,4 @@
-Kim## CarryMathLib
+## CarryMathLib
 
 This is an unaudited exploratory library seeking ways to reduce protocol exploits due to rounding errors. DO NOT USE THIS IN PRODUCTION.
 
@@ -19,7 +19,7 @@ For easy devex, you can isolate by msg.sig + name space. this makes tracking cou
         uint256 result = CarryMathLib.mulDiv(1, 1, 3, ns, 0);
         uint256 result2 = CarryMathLib.mulDiv(1, 1, 3, ns, 1);
     }
-    ```
+```
 
 
 ## Notes
