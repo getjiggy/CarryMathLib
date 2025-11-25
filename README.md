@@ -12,7 +12,7 @@ This library attempts to provide easy to use isolation for important math operat
 
 For easy devex, you can isolate by msg.sig + name space. this makes tracking counters easier. 
 
-````solidity
+```solidity
     function foo() external returns (uint256 result, uint256 result2) {
         bytes32 ns = keccak256(abi.encode("bar", msg.sig));
 
